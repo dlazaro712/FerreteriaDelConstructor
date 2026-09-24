@@ -1,0 +1,21 @@
+# Habilitar el motor de reescritura de URLs
+RewriteEngine On
+
+# Definir la ruta base del proyecto (necesario cuando se ejecuta en subcarpetas con XAMPP/Apache)
+RewriteBase /ferreteriaDelConstructor/
+
+# 1. Proteger el acceso directo a carpetas y archivos internos del sistema (MVC y config)
+RewriteRule ^(config|models|controllers)/ - [F,L]
+
+# 2. Enrutar las peticiones de la API REST (/api/productos, /api/productos/1, etc.)
+# Redirige todo lo que comience con 'api/' hacia los archivos correspondientes en la carpeta api/
+RewriteRule ^api/([a-zA-Z0-9_-]+)(?:/([0-9]+))?/?$ api/$1.php?id=$2 [QSA,L]
+
+# 3. Controlar solicitudes amigables del Frontend (Opcional para páginas limpias)
+# Si no es un archivo o directorio físico existente en la raíz, redirige o maneja la vista
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Ejemplo: Permitir URLs limpias limpiando extensiones o redirigiendo a index/vistas si aplica
+# (Puedes ajustar esta regla según la estructura de enrutamiento principal de tus vistas)
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ views/$1.php [L]
