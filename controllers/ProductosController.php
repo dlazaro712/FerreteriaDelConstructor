@@ -2,7 +2,7 @@
 include_once __DIR__ . '/../config/Database.php';
 include_once __DIR__ . '/../models/Producto.php';
 
-class ProductoController {
+class ProductosController {
     private $db;
     private $productoModel;
 
@@ -17,8 +17,8 @@ class ProductoController {
      * @return array
      */
     public function listarProductos() {
-        $stmt = $this->productoModel->leerTodos();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // El modelo refactorizado ya retorna directamente el arreglo asociativo
+        return $this->productoModel->leerTodos();
     }
 
     /**
@@ -30,6 +30,7 @@ class ProductoController {
         if (empty($id) || !is_numeric($id)) {
             return false;
         }
+        // El modelo refactorizado ya retorna directamente el arreglo asociativo o false
         return $this->productoModel->obtenerPorId($id);
     }
 
@@ -90,7 +91,7 @@ class ProductoController {
             return false;
         }
 
-        // Se recomienda la eliminación lógica para evitar errores con llaves foráneas en 'estadodetalle_pedido'
+        // Se recomienda la eliminación lógica para evitar errores con llaves foráneas en 'detalle_pedido'
         return $this->productoModel->eliminarLogico($id);
     }
 }

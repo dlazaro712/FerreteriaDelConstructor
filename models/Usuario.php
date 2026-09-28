@@ -5,41 +5,34 @@ class Usuario {
     private $db;
     private $table_name = "usuarios";
 
-    // Propiedades del Modelo según la estructura de la base de datos
-    public $id_usuario;
-    public $nombre;
-    public $correo;
-    public $password;
-    public $tipo_usuario;
-    public $fecha_registro;
-
     public function __construct() {
         $database = new Database();
-        $this->db = $database->conectar();
+        $this->db = $database->getConnection();
     }
 
-    /**
-     * CREATE: Registrar un nuevo usuario en la base de datos
-     */
-    public function crear() {
+    public function crear($datos) {
         try {
             $query = "INSERT INTO " . $this->table_name . " 
-                      (nombre, correo, password, tipo_usuario, fecha_registro) 
-                      VALUES (:nombre, :correo, :password, :tipo_usuario, NOW())";
+                      (nombre, apellido, correo, password, telefono, direccion, tipo_usuario) 
+                      VALUES (:nombre, :apellido, :correo, :password, :telefono, :direccion, :tipo_usuario)";
             
             $stmt = $this->db->prepare($query);
 
-            // Sanitizar datos
-            $this->nombre       = htmlspecialchars(strip_tags($this->nombre));
-            $this->correo       = filter_var($this->correo, FILTER_SANITIZE_EMAIL);
-            $passwordHash       = password_hash($this->password, PASSWORD_BCRYPT);
-            $this->tipo_usuario = !empty($this->tipo_usuario) ? htmlspecialchars(strip_tags($this->tipo_usuario)) : 'cliente';
+            $nombre = htmlspecialchars(strip_tags($datos['nombre'] ?? ''));
+            $apellido = htmlspecialchars(strip_tags($datos['apellido'] ?? ''));
+            $correo = filter_var($datos['correo'] ?? '', FILTER_SANITIZE_EMAIL);
+            $telefono = htmlspecialchars(strip_tags($datos['telefono'] ?? ''));
+            $direccion = htmlspecialchars(strip_tags($datos['direccion'] ?? ''));
+            $passwordHash = password_hash($datos['password'], PASSWORD_BCRYPT);
+            $tipo_usuario = isset($datos['tipo_usuario']) ? htmlspecialchars(strip_tags($datos['tipo_usuario'])) : 'cliente';
 
-            // Vincular parámetros
-            $stmt->bindParam(':nombre', $this->nombre);
-            $stmt->bindParam(':correo', $this->correo);
+            $stmt->bindParam(':nombre', $nombre);
+            $stmt->bindParam(':apellido', $apellido);
+            $stmt->bindParam(':correo', $correo);
             $stmt->bindParam(':password', $passwordHash);
-            $stmt->bindParam(':tipo_usuario', $this->tipo_usuario);
+            $stmt->bindParam(':telefono', $telefono);
+            $stmt->bindParam(':direccion', $direccion);
+            $stmt->bindParam(':tipo_usuario', $tipo_usuario);
 
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -47,12 +40,9 @@ class Usuario {
         }
     }
 
-    /**
-     * READ: Obtener todos los usuarios registrados
-     */
     public function listar() {
         try {
-            $query = "SELECT id_usuario, nombre, correo, tipo_usuario, fecha_registro 
+            $query = "SELECT id_usuario, nombre, apellido, correo, password, telefono, direccion, tipo_usuario 
                       FROM " . $this->table_name . " 
                       ORDER BY id_usuario DESC";
             
@@ -64,62 +54,51 @@ class Usuario {
         }
     }
 
-    /**
-     * READ: Obtener un solo usuario por su ID
-     */
-    public function obtenerPorId() {
+    public function obtenerPorId($id_usuario) {
         try {
-            $query = "SELECT id_usuario, nombre, correo, tipo_usuario, fecha_registro 
+            $query = "SELECT id_usuario, nombre, apellido, correo, telefono, direccion, tipo_usuario 
                       FROM " . $this->table_name . " 
-                      WHERE id_usuario = ? LIMIT 0,1";
+                      WHERE id_usuario = ?";
             
             $stmt = $this->db->prepare($query);
-            $stmt->execute([$this->id_usuario]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($row) {
-                $this->nombre       = $row['nombre'];
-                $this->correo       = $row['correo'];
-                $this->tipo_usuario = $row['tipo_usuario'];
-                $this->fecha_registro = $row['fecha_registro'];
-                return $row;
-            }
-
-            return null;
+            $stmt->execute([$id_usuario]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return null;
         }
     }
 
-    /**
-     * UPDATE: Actualizar la información de un usuario
-     */
-    public function actualizar() {
+    public function actualizar($id_usuario, $datos) {
         try {
-            if (!empty($this->password)) {
+            if (!empty($datos['password'])) {
                 $query = "UPDATE " . $this->table_name . " 
-                          SET nombre = :nombre, correo = :correo, password = :password, tipo_usuario = :tipo_usuario 
+                          SET nombre = :nombre, apellido = :apellido, correo = :correo, password = :password, telefono = :telefono, direccion = :direccion, tipo_usuario = :tipo_usuario 
                           WHERE id_usuario = :id_usuario";
-                $passwordHash = password_hash($this->password, PASSWORD_BCRYPT);
+                $passwordHash = password_hash($datos['password'], PASSWORD_BCRYPT);
             } else {
                 $query = "UPDATE " . $this->table_name . " 
-                          SET nombre = :nombre, correo = :correo, tipo_usuario = :tipo_usuario 
+                          SET nombre = :nombre, apellido = :apellido, correo = :correo, telefono = :telefono, direccion = :direccion, tipo_usuario = :tipo_usuario 
                           WHERE id_usuario = :id_usuario";
             }
 
             $stmt = $this->db->prepare($query);
 
-            $this->nombre       = htmlspecialchars(strip_tags($this->nombre));
-            $this->correo       = filter_var($this->correo, FILTER_SANITIZE_EMAIL);
-            $this->tipo_usuario = htmlspecialchars(strip_tags($this->tipo_usuario));
-            $this->id_usuario   = intval($this->id_usuario);
+            $nombre = htmlspecialchars(strip_tags($datos['nombre']));
+            $apellido = htmlspecialchars(strip_tags($datos['apellido']));
+            $correo = filter_var($datos['correo'], FILTER_SANITIZE_EMAIL);
+            $telefono = htmlspecialchars(strip_tags($datos['telefono']));
+            $direccion = htmlspecialchars(strip_tags($datos['direccion']));
+            $tipo_usuario = htmlspecialchars(strip_tags($datos['tipo_usuario']));
 
-            $stmt->bindParam(':nombre', $this->nombre);
-            $stmt->bindParam(':correo', $this->correo);
-            $stmt->bindParam(':tipo_usuario', $this->tipo_usuario);
-            $stmt->bindParam(':id_usuario', $this->id_usuario, PDO::PARAM_INT);
+            $stmt->bindParam(':nombre', $nombre);
+            $stmt->bindParam(':apellido', $apellido);
+            $stmt->bindParam(':correo', $correo);
+            $stmt->bindParam(':telefono', $telefono);
+            $stmt->bindParam(':direccion', $direccion);
+            $stmt->bindParam(':tipo_usuario', $tipo_usuario);
+            $stmt->bindParam(':id_usuario', $id_usuario, PDO::PARAM_INT);
 
-            if (!empty($this->password)) {
+            if (!empty($datos['password'])) {
                 $stmt->bindParam(':password', $passwordHash);
             }
 
@@ -129,16 +108,11 @@ class Usuario {
         }
     }
 
-    /**
-     * DELETE: Eliminar un usuario permanentemente de la base de datos
-     */
-    public function eliminar() {
+    public function eliminar($id_usuario) {
         try {
             $query = "DELETE FROM " . $this->table_name . " WHERE id_usuario = ?";
             $stmt = $this->db->prepare($query);
-            $this->id_usuario = intval($this->id_usuario);
-            $stmt->bindParam(1, $this->id_usuario, PDO::PARAM_INT);
-            return $stmt->execute();
+            return $stmt->execute([$id_usuario]);
         } catch (PDOException $e) {
             return false;
         }

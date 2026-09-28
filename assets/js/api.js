@@ -223,6 +223,86 @@ const ApiService = {
                 return { status: "error", mensaje: error.message };
             }
         }
+    },
+
+    // ==========================================
+    // MÉTODOS PARA ESTADO DETALLE PEDIDO (/api/estadoDetallePedido.php)
+    // ==========================================
+
+    estadoDetallePedido: {
+        listar: async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`);
+                const result = await response.json();
+                return result.data || result;
+            } catch (error) {
+                console.error("Error al listar los detalles de pedidos:", error);
+                return [];
+            }
+        },
+        obtenerPorId: async (idDetalle) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`);
+                const result = await response.json();
+                return result.data || result;
+            } catch (error) {
+                console.error(`Error al obtener el detalle de pedido ID ${idDetalle}:`, error);
+                return null;
+            }
+        },
+
+        listarPorPedido: async (idPedido) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_pedido=${idPedido}`);
+                const result = await response.json();
+                return result.data || result;
+            } catch (error) {
+                console.error(`Error al obtener los detalles para el pedido ID ${idPedido}:`, error);
+                return [];
+            }
+        },
+
+        crear: async (dataDetalle) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataDetalle)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error("Error al registrar el detalle de pedido:", error);
+                return { status: "error", mensaje: error.message };
+            }
+        },
+
+        actualizar: async (idDetalle, dataDetalle) => {
+            try {
+                // Combinamos el ID con los datos para asegurar que la API reciba el id_detalle en el cuerpo JSON
+                const payload = { id_detalle: idDetalle, ...dataDetalle };
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error(`Error al actualizar el detalle de pedido ID ${idDetalle}:`, error);
+                return { status: "error", mensaje: error.message };
+            }
+        },
+
+        eliminar: async (idDetalle) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`, {
+                    method: 'DELETE'
+                });
+                return await response.json();
+            } catch (error) {
+                console.error(`Error al eliminar el detalle de pedido ID ${idDetalle}:`, error);
+                return { status: "error", mensaje: error.message };
+            }
+        }
     }
 };
 

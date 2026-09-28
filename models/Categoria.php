@@ -5,9 +5,34 @@ class Categoria {
     private $db;
     private $table = 'categorias';
 
-    public function __construct() {
+    // Propiedades del modelo de datos correspondientes a la tabla
+    private $id_categoria;
+    private $descripcion;
+
+    public function __construct($id_categoria = null, $descripcion = null) {
         $database = new Database();
         $this->db = $database->getConnection();
+
+        $this->id_categoria = $id_categoria;
+        $this->descripcion = $descripcion;
+    }
+
+    // --- Getters y Setters ---
+
+    public function getIdCategoria() {
+        return $this->id_categoria;
+    }
+
+    public function setIdCategoria($id_categoria) {
+        $this->id_categoria = $id_categoria;
+    }
+
+    public function getDescripcion() {
+        return $this->descripcion;
+    }
+
+    public function setDescripcion($descripcion) {
+        $this->descripcion = $descripcion;
     }
 
     /**
@@ -16,7 +41,7 @@ class Categoria {
      */
     public function listar() {
         try {
-            $query = "SELECT * FROM " . $this->table . " ORDER BY nombre ASC";
+            $query = "SELECT * FROM " . $this->table . " ORDER BY descripcion ASC";
             $stmt = $this->db->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -27,9 +52,9 @@ class Categoria {
     }
 
     /**
-     * Obtener una categoría por su ID
+     * Obtener una categoría por su ID cargando las propiedades en el objeto
      * @param int $id
-     * @return array|false
+     * @return self|false
      */
     public function obtenerPorId($id) {
         try {
@@ -37,7 +62,14 @@ class Categoria {
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $this->id_categoria = $row['id_categoria'];
+                $this->descripcion = $row['descripcion'];
+                return $this;
+            }
+            return false;
         } catch (PDOException $e) {
             error_log("Error en Categoria::obtenerPorId -> " . $e->getMessage());
             return false;
@@ -46,19 +78,24 @@ class Categoria {
 
     /**
      * Crear una nueva categoría
-     * @param array $data [ 'nombre' => '...', 'descripcion' => '...' ]
+     * @param array|null $data [ 'descripcion' => '...' ] o usa la propiedad interna
      * @return bool|int ID de la categoría creada o false en caso de fallo
      */
-    public function crear($data) {
+    public function crear($data = null) {
         try {
-            $query = "INSERT INTO " . $this->table . " (nombre, descripcion) VALUES (:nombre, :descripcion)";
+            // Si pasan datos por parámetro, los asignamos a la propiedad
+            if (isset($data['descripcion'])) {
+                $this->descripcion = $data['descripcion'];
+            }
+
+            $query = "INSERT INTO " . $this->table . " (descripcion) VALUES (:descripcion)";
             $stmt = $this->db->prepare($query);
             
-            $stmt->bindParam(':nombre', $data['nombre'], PDO::PARAM_STR);
-            $stmt->bindParam(':descripcion', $data['descripcion'], PDO::PARAM_STR);
+            $stmt->bindParam(':descripcion', $this->descripcion, PDO::PARAM_STR);
 
             if ($stmt->execute()) {
-                return $this->db->lastInsertId();
+                $this->id_categoria = $this->db->lastInsertId();
+                return $this->id_categoria;
             }
             return false;
         } catch (PDOException $e) {
@@ -69,18 +106,24 @@ class Categoria {
 
     /**
      * Actualizar una categoría existente
-     * @param int $id
-     * @param array $data [ 'nombre' => '...', 'descripcion' => '...' ]
+     * @param int|null $id
+     * @param array|null $data [ 'descripcion' => '...' ]
      * @return bool
      */
-    public function actualizar($id, $data) {
+    public function actualizar($id = null, $data = null) {
         try {
-            $query = "UPDATE " . $this->table . " SET nombre = :nombre, descripcion = :descripcion WHERE id_categoria = :id";
+            if ($id !== null) {
+                $this->id_categoria = $id;
+            }
+            if (isset($data['descripcion'])) {
+                $this->descripcion = $data['descripcion'];
+            }
+
+            $query = "UPDATE " . $this->table . " SET descripcion = :descripcion WHERE id_categoria = :id";
             $stmt = $this->db->prepare($query);
             
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-            $stmt->bindParam(':nombre', $data['nombre'], PDO::PARAM_STR);
-            $stmt->bindParam(':descripcion', $data['descripcion'], PDO::PARAM_STR);
+            $stmt->bindParam(':id', $this->id_categoria, PDO::PARAM_INT);
+            $stmt->bindParam(':descripcion', $this->descripcion, PDO::PARAM_STR);
 
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -91,14 +134,18 @@ class Categoria {
 
     /**
      * Eliminar una categoría por su ID
-     * @param int $id
+     * @param int|null $id
      * @return bool
      */
-    public function eliminar($id) {
+    public function eliminar($id = null) {
         try {
+            if ($id !== null) {
+                $this->id_categoria = $id;
+            }
+
             $query = "DELETE FROM " . $this->table . " WHERE id_categoria = :id";
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            $stmt->bindParam(':id', $this->id_categoria, PDO::PARAM_INT);
             return $stmt->execute();
         } catch (PDOException $e) {
             error_log("Error en Categoria::eliminar -> " . $e->getMessage());

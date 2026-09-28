@@ -115,6 +115,7 @@ function renderizarCarrito() {
     let tbody = document.getElementById('tabla-carrito-body');
     let resumenContainer = document.getElementById('resumen-carrito-container');
     let totalGeneralElement = document.getElementById('total-general');
+    let totalGeneralFinalElement = document.getElementById('total-general-final');
 
     if (!tbody) return;
 
@@ -122,40 +123,55 @@ function renderizarCarrito() {
         tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #64748b;">Tu carrito está vacío. ¡Explora nuestros productos y añade herramientas o materiales!</td></tr>`;
         if (resumenContainer) resumenContainer.style.display = 'none';
         if (totalGeneralElement) totalGeneralElement.textContent = 'Q.0.00';
+        if (totalGeneralFinalElement) totalGeneralFinalElement.textContent = 'Q.0.00';
         return;
     }
 
     if (resumenContainer) resumenContainer.style.display = 'block';
     let html = '';
     let subtotalGeneral = 0;
+    let totalGeneralFinal = 0; // Inicializamos correctamente el acumulador final
 
     carrito.forEach(item => {
         let subtotalItem = item.precio * item.cantidad;
         subtotalGeneral += subtotalItem;
+        totalGeneralFinal += subtotalItem; // Corregido: acumulamos el subtotal del ítem actual
+
+        let imagenSrc = item.imagen ? item.imagen : '../../assets/img/default-product.png';
 
         html += `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-weight: 500; color: #1e293b;">${item.nombre}</span>
-                </td>
-                <td style="padding: 1rem; color: #0284c7; font-weight: 600;">Q.${item.precio.toFixed(2)}</td>
-                <td style="padding: 1rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <button onclick="cambiarCantidad(${item.id}, ${item.cantidad - 1})" style="background: #e2e8f0; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
-                        <span style="min-width: 20px; text-align: center;">${item.cantidad}</span>
-                        <button onclick="cambiarCantidad(${item.id}, ${item.cantidad + 1})" style="background: #e2e8f0; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+            <tr>
+                <td>
+                    <div class="cart-product-info">
+
+                        <span class="cart-product-name">${item.nombre}</span>
                     </div>
                 </td>
-                <td style="padding: 1rem; font-weight: bold; color: #0f172a;">Q.${subtotalItem.toFixed(2)}</td>
-                <td style="padding: 1rem; text-align: right;">
-                    <button onclick="eliminarDelCarrito(${item.id})" style="background: #ef4444; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Eliminar</button>
+                <td style="color: #0284c7; font-weight: 600;">Q.${item.precio.toFixed(2)}</td>
+                <td>
+                    <div class="qty-input-group">
+                        <button type="button" class="qty-control-btn" onclick="cambiarCantidad(${item.id}, ${item.cantidad - 1})">-</button>
+                        <span class="qty-display">${item.cantidad}</span>
+                        <button type="button" class="qty-control-btn" onclick="cambiarCantidad(${item.id}, ${item.cantidad + 1})">+</button>
+                    </div>
+                </td>
+                <td style="font-weight: bold; color: #0f172a;">Q.${subtotalItem.toFixed(2)}</td>
+                <td style="text-align: right;">
+                    <button type="button" class="btn-delete-item" onclick="eliminarDelCarrito(${item.id})" title="Eliminar producto">🗑️</button>
                 </td>
             </tr>
         `;
     });
 
     tbody.innerHTML = html;
+
+    // Actualiza el subtotal
     if (totalGeneralElement) {
         totalGeneralElement.textContent = `Q.${subtotalGeneral.toFixed(2)}`;
+    }
+
+    // Actualiza el total a pagar en el resumen utilizando la variable calculada
+    if (totalGeneralFinalElement) {
+        totalGeneralFinalElement.textContent = `Q.${totalGeneralFinal.toFixed(2)}`;
     }
 }

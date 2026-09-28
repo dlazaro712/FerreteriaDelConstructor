@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 // Evitar acceso directo
 if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
     exit('Acceso no permitido');
