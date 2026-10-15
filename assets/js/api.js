@@ -1,19 +1,20 @@
 /**
  * Librería de servicios API para Ferretería del Constructor
- * Centraliza las peticiones HTTP (GET, POST, PUT, DELETE) hacia el backend.
+ * Centraliza las peticiones HTTP y define las constantes globales de configuración.
  */
 
-const API_BASE_URL = 'http://localhost:8080/FerreteriaDelConstructor/api/'; // Ajusta según la estructura de tus rutas relativas
+// Definición única y segura de rutas base globales para la aplicación
+window.BASE_URL = window.location.origin + '/FerreteriaDelConstructor/';
+window.API_BASE_URL = window.BASE_URL + 'api/';
 
-const ApiService = {
+window.ApiService = {
     // ==========================================
     // MÉTODOS PARA PRODUCTOS (/api/productos.php)
     // ==========================================
-    
     productos: {
         listar: async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}productos.php`);
+                const response = await fetch(`${window.API_BASE_URL}productos.php`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -24,7 +25,7 @@ const ApiService = {
 
         obtenerPorId: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}productos.php?id=${id}`);
+                const response = await fetch(`${window.API_BASE_URL}productos.php?id=${id}`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -35,7 +36,7 @@ const ApiService = {
 
         crear: async (dataProducto) => {
             try {
-                const response = await fetch(`${API_BASE_URL}productos.php`, {
+                const response = await fetch(`${window.API_BASE_URL}productos.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataProducto)
@@ -49,7 +50,7 @@ const ApiService = {
 
         actualizar: async (id, dataProducto) => {
             try {
-                const response = await fetch(`${API_BASE_URL}productos.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}productos.php?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataProducto)
@@ -63,7 +64,7 @@ const ApiService = {
 
         eliminar: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}productos.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}productos.php?id=${id}`, {
                     method: 'DELETE'
                 });
                 return await response.json();
@@ -77,11 +78,10 @@ const ApiService = {
     // ==========================================
     // MÉTODOS PARA CATEGORÍAS (/api/categorias.php)
     // ==========================================
-
     categorias: {
         listar: async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}categorias.php`);
+                const response = await fetch(`${window.API_BASE_URL}categorias.php`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -92,7 +92,7 @@ const ApiService = {
 
         obtenerPorId: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}categorias.php?id=${id}`);
+                const response = await fetch(`${window.API_BASE_URL}categorias.php?id=${id}`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -103,7 +103,7 @@ const ApiService = {
 
         crear: async (dataCategoria) => {
             try {
-                const response = await fetch(`${API_BASE_URL}categorias.php`, {
+                const response = await fetch(`${window.API_BASE_URL}categorias.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataCategoria)
@@ -117,7 +117,7 @@ const ApiService = {
 
         actualizar: async (id, dataCategoria) => {
             try {
-                const response = await fetch(`${API_BASE_URL}categorias.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}categorias.php?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataCategoria)
@@ -131,7 +131,7 @@ const ApiService = {
 
         eliminar: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}categorias.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}categorias.php?id=${id}`, {
                     method: 'DELETE'
                 });
                 return await response.json();
@@ -145,11 +145,10 @@ const ApiService = {
     // ==========================================
     // MÉTODOS PARA PEDIDOS (/api/pedidos.php)
     // ==========================================
-
     pedidos: {
         listar: async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}pedidos.php`);
+                const response = await fetch(`${window.API_BASE_URL}pedidos.php`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -160,7 +159,7 @@ const ApiService = {
 
         historial: async (usuarioId = null) => {
             try {
-                let url = `${API_BASE_URL}pedidos.php?action=historial`;
+                let url = `${window.API_BASE_URL}pedidos.php?action=historial`;
                 if (usuarioId) {
                     url += `&usuario_id=${usuarioId}`;
                 }
@@ -175,7 +174,7 @@ const ApiService = {
 
         obtenerDetalle: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}pedidos.php?action=detalle&id=${id}`);
+                const response = await fetch(`${window.API_BASE_URL}pedidos.php?action=detalle&id=${id}`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -186,7 +185,7 @@ const ApiService = {
 
         crear: async (dataPedido) => {
             try {
-                const response = await fetch(`${API_BASE_URL}pedidos.php`, {
+                const response = await fetch(`${window.API_BASE_URL}pedidos.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataPedido)
@@ -200,7 +199,7 @@ const ApiService = {
 
         actualizar: async (id, dataPedido) => {
             try {
-                const response = await fetch(`${API_BASE_URL}pedidos.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}pedidos.php?id=${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataPedido)
@@ -208,31 +207,30 @@ const ApiService = {
                 return await response.json();
             } catch (error) {
                 console.error(`Error al actualizar el pedido ID ${id}:`, error);
-                return { status: "error", mensaje: error.message };
+                return { status: "error", message: error.message };
             }
         },
 
         eliminar: async (id) => {
             try {
-                const response = await fetch(`${API_BASE_URL}pedidos.php?id=${id}`, {
+                const response = await fetch(`${window.API_BASE_URL}pedidos.php?id=${id}`, {
                     method: 'DELETE'
                 });
                 return await response.json();
             } catch (error) {
                 console.error(`Error al eliminar el pedido ID ${id}:`, error);
-                return { status: "error", mensaje: error.message };
+                return { status: "error", message: error.message };
             }
         }
     },
 
     // ==========================================
-    // MÉTODOS PARA ESTADO DETALLE PEDIDO (/api/estadoDetallePedido.php)
+    // MÉTODOS PARA ESTADO DETALLE PEDIDO
     // ==========================================
-
     estadoDetallePedido: {
         listar: async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`);
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -242,7 +240,7 @@ const ApiService = {
         },
         obtenerPorId: async (idDetalle) => {
             try {
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`);
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -253,7 +251,7 @@ const ApiService = {
 
         listarPorPedido: async (idPedido) => {
             try {
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_pedido=${idPedido}`);
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php?id_pedido=${idPedido}`);
                 const result = await response.json();
                 return result.data || result;
             } catch (error) {
@@ -264,7 +262,7 @@ const ApiService = {
 
         crear: async (dataDetalle) => {
             try {
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`, {
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataDetalle)
@@ -278,9 +276,8 @@ const ApiService = {
 
         actualizar: async (idDetalle, dataDetalle) => {
             try {
-                // Combinamos el ID con los datos para asegurar que la API reciba el id_detalle en el cuerpo JSON
                 const payload = { id_detalle: idDetalle, ...dataDetalle };
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php`, {
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -288,23 +285,22 @@ const ApiService = {
                 return await response.json();
             } catch (error) {
                 console.error(`Error al actualizar el detalle de pedido ID ${idDetalle}:`, error);
-                return { status: "error", mensaje: error.message };
+                return { status: "error", message: error.message };
             }
         },
 
         eliminar: async (idDetalle) => {
             try {
-                const response = await fetch(`${API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`, {
+                const response = await fetch(`${window.API_BASE_URL}estadoDetallePedido.php?id_detalle=${idDetalle}`, {
                     method: 'DELETE'
                 });
                 return await response.json();
             } catch (error) {
                 console.error(`Error al eliminar el detalle de pedido ID ${idDetalle}:`, error);
-                return { status: "error", mensaje: error.message };
+                return { status: "error", message: error.message };
             }
         }
     }
 };
 
-// Exportar globalmente para uso directo en scripts front-end tradicionales
 window.ApiService = ApiService;

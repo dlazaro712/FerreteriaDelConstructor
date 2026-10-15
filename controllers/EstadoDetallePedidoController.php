@@ -1,26 +1,33 @@
 <?php
-// Requerir la conexión a la base de datos y el modelo correspondiente
+// controllers/DetallePedidoController.php
+
 require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/../models/EstadoDetallePedido.php';
 
 /**
- * Controlador para la gestión de EstadoDetallePedido
+ * Controlador para la gestión de EstadoDetallePedido.
+ * Sincronizado con la arquitectura híbrida e inserción masiva por pedido.
  */
-class EstadoDetallePedidoController {
+class DetallePedidoController {
     private $db;
     private $detallePedidoModel;
 
     /**
-     * Constructor que inicializa la conexión y el modelo
+     * Constructor que inicializa la conexión PDO y el modelo EstadoDetallePedido
+     * @param PDO|null $dbConexion
      */
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
+    public function __construct($dbConexion = null) {
+        if ($dbConexion instanceof PDO) {
+            $this->db = $dbConexion;
+        } else {
+            $database = new Database();
+            $this->db = $database->getConnection();
+        }
         $this->detallePedidoModel = new EstadoDetallePedido($this->db);
     }
 
     /**
-     * READ (Todos): Obtiene la lista completa de detalles de pedidos (con nombre de producto incluido)
+     * READ (Todos): Obtiene la lista completa de detalles de pedidos (con nombre de producto)
      * @return array
      */
     public function index() {
@@ -33,7 +40,7 @@ class EstadoDetallePedidoController {
      * @return array|false
      */
     public function ver($id_detalle) {
-        return $this->detallePedidoModel->obtenerPorId($id_detalle);
+        return $this->detallePedidoModel->obtenerPorId(intval($id_detalle));
     }
 
     /**
@@ -42,11 +49,11 @@ class EstadoDetallePedidoController {
      * @return array
      */
     public function listarPorPedido($id_pedido) {
-        return $this->detallePedidoModel->obtenerPorPedido($id_pedido);
+        return $this->detallePedidoModel->obtenerPorPedido(intval($id_pedido));
     }
 
     /**
-     * CREATE: Procesa e inserta un nuevo registro de detalle de pedido
+     * CREATE (Individual): Procesa e inserta un registro individual de detalle de pedido
      * @param int $id_pedido
      * @param int $id_producto
      * @param int $cantidad
@@ -54,12 +61,25 @@ class EstadoDetallePedidoController {
      * @return bool
      */
     public function crear($id_pedido, $id_producto, $cantidad, $precio) {
-        $this->detallePedidoModel->id_pedido = $id_pedido;
-        $this->detallePedidoModel->id_producto = $id_producto;
-        $this->detallePedidoModel->cantidad = $cantidad;
-        $this->detallePedidoModel->precio = $precio;
+        $this->detallePedidoModel->id_pedido = intval($id_pedido);
+        $this->detallePedidoModel->id_producto = intval($id_producto);
+        $this->detallePedidoModel->cantidad = intval($cantidad);
+        $this->detallePedidoModel->precio = floatval($precio);
 
         return $this->detallePedidoModel->insertar();
+    }
+
+    /**
+     * CREATE (Masivo): Inserta todos los productos del payload del carrito para un pedido
+     * @param int $id_pedido
+     * @param array $items
+     * @return bool
+     */
+    public function crearMasivo($id_pedido, array $items) {
+        if (empty($id_pedido) || empty($items)) {
+            return false;
+        }
+        return $this->detallePedidoModel->insertarDetallesMasivos(intval($id_pedido), $items);
     }
 
     /**
@@ -72,11 +92,11 @@ class EstadoDetallePedidoController {
      * @return bool
      */
     public function actualizar($id_detalle, $id_pedido, $id_producto, $cantidad, $precio) {
-        $this->detallePedidoModel->id_detalle = $id_detalle;
-        $this->detallePedidoModel->id_pedido = $id_pedido;
-        $this->detallePedidoModel->id_producto = $id_producto;
-        $this->detallePedidoModel->cantidad = $cantidad;
-        $this->detallePedidoModel->precio = $precio;
+        $this->detallePedidoModel->id_detalle = intval($id_detalle);
+        $this->detallePedidoModel->id_pedido = intval($id_pedido);
+        $this->detallePedidoModel->id_producto = intval($id_producto);
+        $this->detallePedidoModel->cantidad = intval($cantidad);
+        $this->detallePedidoModel->precio = floatval($precio);
 
         return $this->detallePedidoModel->actualizar();
     }
@@ -87,7 +107,12 @@ class EstadoDetallePedidoController {
      * @return bool
      */
     public function eliminar($id_detalle) {
-        return $this->detallePedidoModel->eliminar($id_detalle);
+        return $this->detallePedidoModel->eliminar(intval($id_detalle));
     }
+}
+
+// Alias de retrocompatibilidad por si se mantiene la llamada bajo el nombre de clase antiguo
+if (!class_exists('EstadoDetallePedidoController')) {
+    class EstadoDetallePedidoController extends DetallePedidoController {}
 }
 ?>

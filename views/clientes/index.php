@@ -1,58 +1,68 @@
 <?php
 // views/clientes/index.php
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Validación de seguridad: solo clientes o usuarios autenticados
-if (!isset($_SESSION['tipo_usuario'])) {
+// 1. Validación de seguridad: solo clientes autenticados
+if (!isset($_SESSION['tipo_usuario']) || $_SESSION['tipo_usuario'] !== 'cliente') {
     header("Location: " . BASE_URL . "views/usuarios.php?action=login");
     exit();
 }
 
+// 2. Inclusión de configuraciones, base de datos y controladores
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/Database.php';
 require_once __DIR__ . '/../../controllers/ProductosController.php';
-
-// Incluir el controlador de la Lista de Deseos para procesar el guardado
 require_once __DIR__ . '/../../controllers/ListaDeseosController.php';
 
-$productosController = new ProductosController();
-$listaDeseosController = new ListaDeseosController();
+$productosController = new ProductosController();$listaDeseosController = new ListaDeseosController();
 
-// Obtener el ID del usuario actual desde la sesión
-$id_usuario_actual = $_SESSION['id_usuario'] ?? $_SESSION['user_id'] ?? null;
+// 3. Obtener el ID del usuario actual desde la sesión
+$id_usuario_actual = intval($_SESSION['id_usuario'] ?? $_SESSION['user_id'] ?? 0);
 
-// Procesar la acción de guardar en deseos si se recibe por URL (método POST o GET de soporte)
+// 4. Procesar la acción de guardar en deseos si se recibe por URL
 if (isset($_GET['action']) && $_GET['action'] === 'agregar_deseo' && isset($_GET['id_producto'])) {
     $id_producto_deseo = intval($_GET['id_producto']);
-    if ($id_usuario_actual && method_exists($listaDeseosController, 'agregar')) {
+    
+    if ($id_usuario_actual > 0 &&$id_producto_deseo > 0) {
         try {
-            $listaDeseosController->agregarProducto($id_usuario_actual,$id_producto_deseo);
+            $resultado = $listaDeseosController->agregarProducto($id_usuario_actual, $id_producto_deseo);
+        // Depuración temporal: imprimir si se guardó o falló
+        if (!$resultado) {
+            error_log("Fallo al insertar en wishlist para usuario: $id_usuario_actual y producto: $id_producto_deseo");
+        }
         } catch (Exception $e) {
-            // Manejo silencioso o registro de excepción si falla
+            echo "Excepción capturada: " . $e->getMessage();
+            exit();
         }
     }
+    
     header("Location: " . BASE_URL . "views/clientes/ListaDeseos.php");
     exit();
 }
 
-// Obtener categorías y productos usando el controlador
+// 5. Obtener categorías y productos para el catálogo
+$categorias = [];$productos = [];
 try {
     $database = new Database();
     $db =$database->getConnection();
     
     // Obtener categorías ordenadas alfabéticamente
     $stmtCat =$db->query("SELECT id_categoria, descripcion FROM categorias ORDER BY descripcion ASC");
-    $categorias =$stmtCat->fetchAll(PDO::FETCH_ASSOC);
+    $categorias = $stmtCat ? $stmtCat->fetchAll(PDO::FETCH_ASSOC) : [];
 
     // Obtener la lista completa de productos mediante el controlador
-    $productos =$productosController->listarProductos() ?? [];
+    $productos = method_exists($productosController, 'index') 
+        ? $productosController->index() 
+        : (method_exists($productosController, 'listarProductos') ?$productosController->listarProductos() : []);
 } catch (Exception $e) {
+    error_log("Error al cargar datos en index.php del cliente: " . $e->getMessage());
     $categorias = [];$productos = [];
 }
 
-// Incluir el encabezado centralizado
+// 6. Incluir el encabezado centralizado de la aplicación
 include_once __DIR__ . '/../layouts/header.php';
 ?>
 
@@ -60,7 +70,7 @@ include_once __DIR__ . '/../layouts/header.php';
     
     <!-- Sección de Bienvenida -->
     <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-        <h1 style="color: #0f172a; margin: 0 0 0.5rem 0; font-size: 1.75rem;">¡Bienvenido, <?= htmlspecialchars($_SESSION['usuario'] ?? 'Cliente'); ?>!</h1>
+        <h1 style="color: #0f172a; margin: 0 0 0.5rem 0; font-size: 1.75rem;">¡Bienvenido, <?= htmlspecialchars($_SESSION['usuario'] ?? 'Cliente', ENT_QUOTES, 'UTF-8'); ?>!</h1>
         <p style="color: #64748b; margin: 0;">Explora nuestro catálogo de herramientas y materiales, busca lo que necesitas, agrégalo al carrito o guárdalo en tu lista de deseos.</p>
     </div>
 
@@ -79,7 +89,7 @@ include_once __DIR__ . '/../layouts/header.php';
             <select id="filtro-categoria" style="width: 100%; padding: 0.65rem; border: 1px solid #d1d5db; border-radius: 6px; background: white;">
                 <option value="">Todas las categorías</option>
                 <?php foreach ($categorias as$cat): ?>
-                    <option value="<?= $cat['id_categoria']; ?>"><?= htmlspecialchars($cat['descripcion']); ?></option>
+                    <option value="<?= $cat['id_categoria']; ?>"><?= htmlspecialchars($cat['descripcion'], ENT_QUOTES, 'UTF-8'); ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -101,17 +111,22 @@ include_once __DIR__ . '/../layouts/header.php';
 
         <?php if (!empty($productos)): ?>
             <div class="product-grid" id="product-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-                <?php foreach ($productos as$prod): ?>
+                <?php foreach ($productos as$prod): 
+                    $idProd = intval($prod['id_producto'] ?? $prod['id'] ?? 0);$nombreProd = $prod['nombre'] ?? 'Producto';$precioProd = floatval($prod['precio'] ?? 0);$stockProd = intval($prod['cantidad'] ?? $prod['stock'] ?? 0);
+                    $imagenProd =$prod['imagen'] ?? '';
+                    $idCat =$prod['id_categoria'] ?? '';
+                    $descProd =$prod['descripcion'] ?? '';
+                ?>
                     <div class="product-card" 
-                         data-nombre="<?= htmlspecialchars(strtolower($prod['nombre'] ?? '')); ?>"
-                         data-categoria="<?= htmlspecialchars($prod['id_categoria'] ?? ''); ?>"
-                         data-precio="<?= floatval($prod['precio'] ?? 0); ?>"
+                         data-nombre="<?= htmlspecialchars(strtolower($nombreProd), ENT_QUOTES, 'UTF-8'); ?>"
+                         data-categoria="<?= htmlspecialchars($idCat, ENT_QUOTES, 'UTF-8'); ?>"
+                         data-precio="<?= $precioProd; ?>"
                          style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         
                         <!-- Contenedor de Imagen -->
                         <div class="product-image-container" style="width: 100%; height: 180px; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-radius: 6px; overflow: hidden; margin-bottom: 1rem;">
-                            <?php if (!empty($prod['imagen'])): ?>
-                                <img src="<?= BASE_URL; ?>assets/imgs/<?= htmlspecialchars($prod['imagen']); ?>" alt="<?= htmlspecialchars($prod['nombre']); ?>" class="product-img" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                            <?php if (!empty($imagenProd)): ?>
+                                <img src="<?= BASE_URL; ?>assets/imgs/<?= htmlspecialchars($imagenProd, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?>" class="product-img" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.src='<?= BASE_URL; ?>assets/imgs/Taladro-Atornillador-Inalambrico.png'">
                             <?php else: ?>
                                 <div class="product-img-placeholder" style="color: #94a3b8; font-size: 0.85rem;">Sin Imagen</div>
                             <?php endif; ?>
@@ -120,27 +135,28 @@ include_once __DIR__ . '/../layouts/header.php';
                         <!-- Información del Producto -->
                         <div class="product-info" style="display: flex; flex-direction: column; flex-grow: 1; justify-content: space-between;">
                             <div>
-                                <h4 class="product-name" style="font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 0.5rem 0;"><?= htmlspecialchars($prod['nombre']); ?></h4>
-                                <p class="product-description" style="font-size: 0.85rem; color: #64748b; margin: 0 0 1rem 0;"><?= htmlspecialchars(substr($prod['descripcion'] ?? '', 0, 80)); ?>...</p>
+                                <h4 class="product-name" style="font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 0.5rem 0;"><?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?></h4>
+                                <p class="product-description" style="font-size: 0.85rem; color: #64748b; margin: 0 0 1rem 0;"><?= htmlspecialchars(substr($descProd, 0, 80), ENT_QUOTES, 'UTF-8'); ?>...</p>
                                 <div class="product-meta" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                    <span class="product-price" style="font-size: 1.1rem; font-weight: bold; color: #2563eb;">Q.<?= number_format($prod['precio'], 2); ?></span>
-                                    <span class="product-stock <?= $prod['cantidad'] > 0 ? 'in-stock' : 'out-stock'; ?>" style="font-size: 0.75rem; font-weight: 500; color: <?= $prod['cantidad'] > 0 ? '#059669' : '#dc2626'; ?>;">
-                                        <?= $prod['cantidad'] > 0 ? 'Stock: ' .$prod['cantidad'] : 'Agotado'; ?>
+                                    <span class="product-price" style="font-size: 1.1rem; font-weight: bold; color: #2563eb;">Q.<?= number_format($precioProd, 2); ?></span>
+                                    <span class="product-stock <?= $stockProd > 0 ? 'in-stock' : 'out-stock'; ?>" style="font-size: 0.75rem; font-weight: 500; color: <?= $stockProd > 0 ? '#059669' : '#dc2626'; ?>;">
+                                        <?= $stockProd > 0 ? 'Stock: ' .$stockProd : 'Agotado'; ?>
                                     </span>
                                 </div>
                             </div>
                             
                             <!-- Botones de Acción (Carrito y Wishlist) -->
                             <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto;">
-                                <?php if ($prod['cantidad'] > 0): ?>
+                                <?php if ($stockProd > 0): ?>
                                     <button type="button" 
                                             class="btn btn-dark" 
                                             style="width: 100%; padding: 0.6rem; background: #0f172a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: background 0.2s;"
                                             onclick="agregarAlCarrito({
-                                                id: <?= $prod['id_producto']; ?>,
-                                                nombre: '<?= htmlspecialchars($prod['nombre'], ENT_QUOTES); ?>',
-                                                precio: <?= $prod['precio']; ?>,
-                                                imagen: '<?= htmlspecialchars($prod['imagen'] ?? '', ENT_QUOTES); ?>'
+                                                id_producto: <?= $idProd; ?>,
+                                                nombre: '<?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?>',
+                                                precio: <?= $precioProd; ?>,
+                                                imagen: '<?= htmlspecialchars($imagenProd, ENT_QUOTES, 'UTF-8'); ?>',
+                                                stockMax: <?= $stockProd; ?>
                                             })"
                                             onmouseover="this.style.background='#1e293b'" 
                                             onmouseout="this.style.background='#0f172a'">
@@ -151,19 +167,19 @@ include_once __DIR__ . '/../layouts/header.php';
                                 <?php endif; ?>
 
                                 <!-- Botón de Guardar en Deseos conectado con el controlador -->
-                                <button type="button" 
-                                        class="btn btn-outline" 
-                                        style="display: block; width: 100%; text-align: center; padding: 0.5rem; background: white; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: background 0.2s; box-sizing: border-box;"
-                                        onclick="guardarEnWishlist({
-                                            id: <?= $prod['id_producto']; ?>,
-                                            nombre: '<?= htmlspecialchars($prod['nombre'], ENT_QUOTES); ?>',
-                                            precio: <?= $prod['precio']; ?>,
-                                            imagen: '<?= htmlspecialchars($prod['imagen'] ?? '', ENT_QUOTES); ?>'
-                                        }); window.location.href='<?= BASE_URL; ?>views/clientes/index.php?action=agregar_deseo&id_producto=<?= $prod['id_producto']; ?>';"
-                                        onmouseover="this.style.background='#f1f5f9'" 
-                                        onmouseout="this.style.background='white'">
+                                <a href="<?= BASE_URL; ?>views/clientes/index.php?action=agregar_deseo&id_producto=<?= $idProd; ?>" 
+                                   class="btn btn-outline" 
+                                   style="display: block; width: 100%; text-align: center; padding: 0.5rem; background: white; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 0.85rem; transition: background 0.2s; box-sizing: border-box;"
+                                   onclick="guardarEnWishlist({
+                                       id_producto: <?= $idProd; ?>,
+                                       nombre: '<?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?>',
+                                       precio: <?= $precioProd; ?>,
+                                       imagen: '<?= htmlspecialchars($imagenProd, ENT_QUOTES, 'UTF-8'); ?>'
+                                   })"
+                                   onmouseover="this.style.background='#f1f5f9'" 
+                                   onmouseout="this.style.background='white'">
                                     ❤️ Guardar en Deseos
-                                </button>
+                                </a>
                             </div>
                         </div>
 
@@ -203,7 +219,9 @@ document.addEventListener("DOMContentLoaded", function() {
         const categoriaSeleccionada = selectCategoria.value;
         const precioMaximo = parseFloat(rangePrecio.value) || 2200;
 
-        spanPrecioVal.textContent = 'Q.' + precioMaximo;
+        if (spanPrecioVal) {
+            spanPrecioVal.textContent = 'Q.' + precioMaximo;
+        }
 
         let visibles = 0;
 
@@ -258,7 +276,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<!-- Conexión con app.js general para el carrito y wishlist -->
+<!-- Conexión con app.js general para el carrito y funciones cliente -->
 <script src="<?= BASE_URL; ?>assets/js/app.js"></script>
 
 <?php 
