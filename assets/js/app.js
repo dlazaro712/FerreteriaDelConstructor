@@ -196,6 +196,15 @@ window.procesarCheckoutPedido = function() {
     form.appendChild(inputCarrito);
     document.body.appendChild(form);
 
+    // ==========================================
+    // LIMPIAR EL CARRITO Y CONTADOR LOCAL
+    // ==========================================
+    localStorage.removeItem("carrito_ferreteria");
+    if (typeof actualizarContadorCarrito === 'function') {
+        actualizarContadorCarrito();
+    }
+
+    // Enviar el formulario hacia pedidos.php
     form.submit();
 };
 

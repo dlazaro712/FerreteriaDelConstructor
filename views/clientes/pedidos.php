@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
     }
 
     $id_usuario = $_SESSION['id_usuario'];
-    $carritoJson = $_POST['carritoJson'] ?? '[]';
+    $carritoJson = $_POST['carrito_data'] ?? '[]';
     $itemsCarrito = json_decode($carritoJson, true);
 
     if (empty($itemsCarrito)) {
@@ -74,9 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
         exit();
 
     } catch (Exception $e) {
-        $db->rollBack();
+        if ($db && $db->inTransaction()) {
+            $db->rollBack();
+        }
         error_log("Error al registrar el pedido: " . $e->getMessage());
-        echo "<div style='padding: 2rem; color: red; text-align: center; font-family: sans-serif;'>Hubo un error al procesar tu compra. Por favor, inténtalo de nuevo.</div>";
+        echo "<div style='padding: 2rem; color: red; text-align: center; font-family: sans-serif;'>Hubo un error al procesar tu compra. Por favor, inténtalo de nuevo. Detalle: " . htmlspecialchars($e->getMessage()) . "</div>";
         exit();
     }
 }
@@ -105,6 +107,19 @@ $id_usuario_actual = intval($_SESSION['id_usuario'] ?? $_SESSION['user_id'] ?? 0
 include_once __DIR__ . '/../layouts/header.php';
 ?>
 
+<!-- Estilos para la miniatura de imagen del producto -->
+<style>
+    .pedido-img-prod {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 2px;
+    }
+</style>
+
 <main class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
     <?php if ($id_pedido): ?>
         <!-- ========================================== -->
@@ -119,11 +134,30 @@ include_once __DIR__ . '/../layouts/header.php';
         $esPropietario = ($pedidoDetalle && $idPropietario === $id_usuario_actual);
 
         if ($pedidoDetalle && $esPropietario): 
+            // Obtención robusta de líneas de detalle mediante JOIN seguro a productos
             $itemsDetalle = [];
-            if ($detallePedidoController && method_exists($detallePedidoController, 'listarPorPedido')) {
-                $itemsDetalle = $detallePedidoController->listarPorPedido($id_pedido);
-            } elseif (method_exists($pedidosController, 'obtenerDetallePedido')) {
-                $itemsDetalle = $pedidosController->obtenerDetallePedido($id_pedido);
+            try {
+                $database = new Database();
+                $db = $database->getConnection();
+                
+                // Intento 1: Relación con id_producto
+                $queryItems = "SELECT d.*, p.nombre, p.imagen FROM estadodetalle_pedido d JOIN productos p ON d.id_producto = p.id_producto WHERE d.id_pedido = :id_pedido";
+                $stmtItems = $db->prepare($queryItems);
+                $stmtItems->execute([':id_pedido' => $id_pedido]);
+                $itemsDetalle = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+                // Intento 2: Si la llave primaria de productos es 'id'
+                if (empty($itemsDetalle)) {
+                    $queryItems2 = "SELECT d.*, p.nombre, p.imagen FROM estadodetalle_pedido d JOIN productos p ON d.id_producto = p.id WHERE d.id_pedido = :id_pedido";
+                    $stmtItems2 = $db->prepare($queryItems2);
+                    $stmtItems2->execute([':id_pedido' => $id_pedido]);
+                    $itemsDetalle = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
+                }
+            } catch (Exception $ex) {
+                // Fallback a los controladores si ocurre alguna excepción
+                if (method_exists($detallePedidoController, 'listarPorPedido')) {
+                    $itemsDetalle = $detallePedidoController->listarPorPedido($id_pedido);
+                }
             }
         ?>
             <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); max-width: 850px; margin: 0 auto; border: 1px solid #e5e7eb;">
@@ -164,14 +198,21 @@ include_once __DIR__ . '/../layouts/header.php';
                             $totalSuma = 0;
                             if (!empty($itemsDetalle)):
                                 foreach ($itemsDetalle as $item):
-                                    $pUnit = floatval($item['precio_unitario'] ?? $item['precio'] ?? 0);
+                                    $pUnit = floatval($item['precio'] ?? $item['precio_unitario'] ?? 0);
                                     $cant = intval($item['cantidad'] ?? 1);
                                     $sub = $pUnit * $cant;
                                     $totalSuma += $sub;
+
+                                    $nombreProd = $item['nombre'] ?? $item['nombre_producto'] ?? 'Producto Ferretería';
+                                    $imgFile = trim($item['imagen'] ?? '');
+                                    $imagenSrc = $imgFile !== '' ? BASE_URL . 'assets/imgs/' . $imgFile : BASE_URL . 'assets/imgs/Taladro-Atornillador-Inalambrico.png';
                             ?>
                                 <tr style="border-bottom: 1px solid #f1f5f9; color: #334155;">
-                                    <td style="padding: 0.75rem; font-weight: 500; color: #0f172a;">
-                                        <?= htmlspecialchars($item['nombre_producto'] ?? $item['nombre'] ?? 'Producto', ENT_QUOTES, 'UTF-8'); ?>
+                                    <td style="padding: 0.75rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <img src="<?= htmlspecialchars($imagenSrc, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?>" class="pedido-img-prod" onerror="this.onerror=null; this.src='<?= BASE_URL; ?>assets/imgs/Taladro-Atornillador-Inalambrico.png';">
+                                            <span style="font-weight: 500; color: #0f172a;"><?= htmlspecialchars($nombreProd, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </div>
                                     </td>
                                     <td style="padding: 0.75rem; text-align: center; color: #2563eb; font-weight: 500;">Q.<?= number_format($pUnit, 2); ?></td>
                                     <td style="padding: 0.75rem; text-align: center; font-weight: 600;"><?= $cant; ?></td>
